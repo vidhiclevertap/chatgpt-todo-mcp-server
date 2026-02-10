@@ -1,0 +1,9 @@
+{
+  "name": "chatgpt-todo-mcp-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0"
+  }
+}
