@@ -1,60 +1,48 @@
-import {
-  createServer,
-  tool
-} from "@modelcontextprotocol/sdk/server";
+import { createServer, tool } from "@modelcontextprotocol/sdk/server";
 
+/**
+ * In-memory store (demo only)
+ */
 const todos = [];
 
-/* ---------------- MCP SERVER ---------------- */
-
-const server = createServer({
+/**
+ * Create MCP server
+ */
+const mcpServer = createServer({
   name: "Todo MCP Server",
   version: "1.0.0"
 });
 
-/* ---------------- TOOLS ---------------- */
-
 /**
- * Add a todo (ChatGPT native input)
+ * Tool: Add Todo
  */
-server.addTool(
+mcpServer.addTool(
   tool({
     name: "add_todo",
     description: "Add a new todo item",
     inputSchema: {
       type: "object",
       properties: {
-        text: {
-          type: "string",
-          description: "The todo text"
-        }
+        text: { type: "string" }
       },
       required: ["text"]
     }
   }),
   async ({ text }) => {
-    const todo = {
-      id: Date.now(),
-      text
-    };
-
-    todos.push(todo);
+    todos.push({ id: Date.now(), text });
 
     return {
       content: [
-        {
-          type: "text",
-          text: `✅ Todo added: "${text}"`
-        }
+        { type: "text", text: `✅ Added todo: ${text}` }
       ]
     };
   }
 );
 
 /**
- * List todos
+ * Tool: List Todos
  */
-server.addTool(
+mcpServer.addTool(
   tool({
     name: "list_todos",
     description: "List all todos"
@@ -70,9 +58,7 @@ server.addTool(
       content: [
         {
           type: "text",
-          text: todos
-            .map((t, i) => `${i + 1}. ${t.text}`)
-            .join("\n")
+          text: todos.map((t, i) => `${i + 1}. ${t.text}`).join("\n")
         }
       ]
     };
@@ -80,21 +66,11 @@ server.addTool(
 );
 
 /**
- * Clear todos
+ * 🚨 REQUIRED FOR VERCEL
+ * Export a fetch handler
  */
-server.addTool(
-  tool({
-    name: "clear_todos",
-    description: "Remove all todos"
-  }),
-  async () => {
-    todos.length = 0;
-    return {
-      content: [{ type: "text", text: "🧹 All todos cleared." }]
-    };
+export default {
+  async fetch(request) {
+    return mcpServer.handle(request);
   }
-);
-
-/* ---------------- EXPORT FOR VERCEL ---------------- */
-
-export default server;
+};
