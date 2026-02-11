@@ -1,70 +1,105 @@
 export const config = {
-  runtime: "nodejs",
+  runtime: "edge",
 };
 
-export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    res.status(405).end();
-    return;
+export default async function handler(req) {
+
+  // 1️⃣ Tool discovery (SSE stream)
+  if (req.method === "GET") {
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+      start(controller) {
+        const tools = {
+          tools: [
+            {
+              name: "login_user",
+              description: "Login user with email",
+              parameters: {
+                type: "object",
+                properties: {
+                  email: { type: "string" }
+                },
+                required: ["email"]
+              }
+            },
+            {
+              name: "add_todo",
+              description: "Add a todo item",
+              parameters: {
+                type: "object",
+                properties: {
+                  text: { type: "string" }
+                },
+                required: ["text"]
+              }
+            },
+            {
+              name: "capture_lead",
+              description: "Capture lead email",
+              parameters: {
+                type: "object",
+                properties: {
+                  email: { type: "string" }
+                },
+                required: ["email"]
+              }
+            }
+          ]
+        };
+
+        controller.enqueue(
+          encoder.encode(
+            `event: tools\ndata: ${JSON.stringify(tools)}\n\n`
+          )
+        );
+
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
   }
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
+  // 2️⃣ Tool execution handler
+  if (req.method === "POST") {
+    const body = await req.json();
+    const { name, arguments: args } = body;
 
-  res.flushHeaders?.();
+    let result = {};
 
-  // Send tool manifest first
-  res.write(`event: tools\n`);
-  res.write(
-    `data: ${JSON.stringify({
-      tools: [
-        {
-          name: "login_user",
-          description: "Login user with email",
-          parameters: {
-            type: "object",
-            properties: {
-              email: { type: "string" }
-            },
-            required: ["email"]
-          }
-        },
-        {
-          name: "add_todo",
-          description: "Add a todo item",
-          parameters: {
-            type: "object",
-            properties: {
-              text: { type: "string" }
-            },
-            required: ["text"]
-          }
-        },
-        {
-          name: "capture_lead",
-          description: "Capture lead email",
-          parameters: {
-            type: "object",
-            properties: {
-              email: { type: "string" }
-            },
-            required: ["email"]
-          }
+    if (name === "login_user") {
+      result = {
+        message: `User ${args.email} logged in`
+      };
+    }
+
+    if (name === "add_todo") {
+      result = {
+        message: `Todo added: ${args.text}`
+      };
+    }
+
+    if (name === "capture_lead") {
+      result = {
+        message: `Lead captured: ${args.email}`
+      };
+    }
+
+    return new Response(
+      JSON.stringify({ result }),
+      {
+        headers: {
+          "Content-Type": "application/json"
         }
-      ]
-    })}\n\n`
-  );
+      }
+    );
+  }
 
-  // Keep alive
-  const interval = setInterval(() => {
-    res.write(`event: ping\n`);
-    res.write(`data: {}\n\n`);
-  }, 20000);
-
-  req.on("close", () => {
-    clearInterval(interval);
-    res.end();
-  });
+  return new Response("Method not allowed", { status: 405 });
 }
-
