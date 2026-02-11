@@ -7,7 +7,7 @@ async function pushEvent(identity, eventName, data = {}) {
     headers: {
       "X-CleverTap-Account-Id": CLEVERTAP_ACCOUNT_ID,
       "X-CleverTap-Passcode": CLEVERTAP_PASSCODE,
-      "Content-Type": "application/json"
+      "Content-Type": "text/event-stream"
     },
     body: JSON.stringify({
       d: [
