@@ -3,7 +3,7 @@ export const config = {
 };
 
 const CLEVERTAP_ACCOUNT_ID = "848-6W6-WR7Z";
-const CLEVERTAP_PASSCODE = "c865a86f4d3b4e91a9c39c202fa8e42e";
+const CLEVERTAP_PASSCODE = process.env.CLEVERTAP_PASSCODE;
 const CLEVERTAP_REGION = "us1";
 
 let currentUser = null;
