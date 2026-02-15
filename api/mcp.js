@@ -39,42 +39,44 @@ export default async function handler(req) {
       start(controller) {
 
         const tools = {
-          tools: [
-            {
-              name: "login_user",
-              description: "Login user with email",
-              parameters: {
-                type: "object",
-                properties: {
-                  email: { type: "string" }
-                },
-                required: ["email"]
-              }
-            },
-            {
-              name: "add_todo",
-              description: "Add a todo item",
-              parameters: {
-                type: "object",
-                properties: {
-                  text: { type: "string" }
-                },
-                required: ["text"]
-              }
-            },
-            {
-              name: "capture_lead",
-              description: "Capture lead email",
-              parameters: {
-                type: "object",
-                properties: {
-                  email: { type: "string" }
-                },
-                required: ["email"]
-              }
-            }
-          ]
-        };
+  tools: [
+    {
+      name: "login_user",
+      description: "Login user with email",
+      parameters: {
+        type: "object",
+        properties: {
+          email: { type: "string" }
+        },
+        required: ["email"]
+      }
+    },
+    {
+      name: "add_todo",
+      description: "Add a todo item",
+      parameters: {
+        type: "object",
+        properties: {
+          email: { type: "string" },
+          text: { type: "string" }
+        },
+        required: ["email", "text"]
+      }
+    },
+    {
+      name: "capture_lead",
+      description: "Capture lead email",
+      parameters: {
+        type: "object",
+        properties: {
+          email: { type: "string" }
+        },
+        required: ["email"]
+      }
+    }
+  ]
+};
+
 
         controller.enqueue(
           encoder.encode(
