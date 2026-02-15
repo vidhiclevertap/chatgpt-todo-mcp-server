@@ -36,7 +36,8 @@ export default async function handler(req) {
   const stream = new ReadableStream({
     start(controller) {
 
-      const tools = {
+      const toolsPayload = {
+        type: "tools",
         tools: [
           {
             name: "login_user",
@@ -75,22 +76,26 @@ export default async function handler(req) {
         ]
       };
 
-      // 1️⃣ Send tools
+      // Send tools in MCP format
       controller.enqueue(
         encoder.encode(
-          `event: tools\ndata: ${JSON.stringify(tools)}\n\n`
+          `event: message\ndata: ${JSON.stringify(toolsPayload)}\n\n`
         )
       );
 
-      // 2️⃣ Tell ChatGPT we are ready
+      // Send ready signal
       controller.enqueue(
-        encoder.encode(`event: ready\ndata: {}\n\n`)
+        encoder.encode(
+          `event: message\ndata: ${JSON.stringify({ type: "ready" })}\n\n`
+        )
       );
 
-      // 3️⃣ Keep alive
+      // Keep alive
       const interval = setInterval(() => {
         controller.enqueue(
-          encoder.encode(`event: ping\ndata: {}\n\n`)
+          encoder.encode(
+            `event: message\ndata: ${JSON.stringify({ type: "ping" })}\n\n`
+          )
         );
       }, 15000);
 
