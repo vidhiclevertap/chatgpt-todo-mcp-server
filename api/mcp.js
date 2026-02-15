@@ -6,8 +6,6 @@ const CLEVERTAP_ACCOUNT_ID = "848-6W6-WR7Z";
 const CLEVERTAP_PASSCODE = process.env.CLEVERTAP_PASSCODE;
 const CLEVERTAP_REGION = "us1";
 
-let currentUser = null;
-
 // -----------------------------
 // CleverTap REST Sender
 // -----------------------------
@@ -29,7 +27,7 @@ async function sendToCleverTap(payload) {
 export default async function handler(req) {
 
   // -----------------------------
-  // 1️⃣ TOOL DISCOVERY (SSE)
+  // 1️⃣ TOOL DISCOVERY (SSE - FIXED)
   // -----------------------------
   if (req.method === "GET") {
 
@@ -39,65 +37,77 @@ export default async function handler(req) {
       start(controller) {
 
         const tools = {
-  tools: [
-    {
-      name: "login_user",
-      description: "Login user with email",
-      parameters: {
-        type: "object",
-        properties: {
-          email: { type: "string" }
-        },
-        required: ["email"]
-      }
-    },
-    {
-      name: "add_todo",
-      description: "Add a todo item",
-      parameters: {
-        type: "object",
-        properties: {
-          email: { type: "string" },
-          text: { type: "string" }
-        },
-        required: ["email", "text"]
-      }
-    },
-    {
-      name: "capture_lead",
-      description: "Capture lead email",
-      parameters: {
-        type: "object",
-        properties: {
-          email: { type: "string" }
-        },
-        required: ["email"]
-      }
-    }
-  ]
-};
+          tools: [
+            {
+              name: "login_user",
+              description: "Login user with email",
+              parameters: {
+                type: "object",
+                properties: {
+                  email: { type: "string" }
+                },
+                required: ["email"]
+              }
+            },
+            {
+              name: "add_todo",
+              description: "Add a todo item",
+              parameters: {
+                type: "object",
+                properties: {
+                  email: { type: "string" },
+                  text: { type: "string" }
+                },
+                required: ["email", "text"]
+              }
+            },
+            {
+              name: "capture_lead",
+              description: "Capture lead email",
+              parameters: {
+                type: "object",
+                properties: {
+                  email: { type: "string" }
+                },
+                required: ["email"]
+              }
+            }
+          ]
+        };
 
-
+        // Send tool definitions
         controller.enqueue(
           encoder.encode(
             `event: tools\ndata: ${JSON.stringify(tools)}\n\n`
           )
         );
 
-        controller.close();
+        // Keep connection alive
+        const interval = setInterval(() => {
+          controller.enqueue(
+            encoder.encode(`event: ping\ndata: {}\n\n`)
+          );
+        }, 20000);
+
+        // Proper abort handling
+        req.signal.addEventListener("abort", () => {
+          clearInterval(interval);
+          controller.close();
+        });
       }
     });
 
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive"
       }
     });
   }
 
   // -----------------------------
-  // 2️⃣ TOOL EXECUTION
+  // 2️⃣ TOOL EXECUTION (STATELESS)
   // -----------------------------
   if (req.method === "POST") {
 
@@ -109,9 +119,6 @@ export default async function handler(req) {
     // -----------------------------
     if (name === "login_user") {
 
-      currentUser = args.email;
-
-      // Create profile
       await sendToCleverTap({
         d: [{
           identity: args.email,
@@ -122,7 +129,6 @@ export default async function handler(req) {
         }]
       });
 
-      // Fire event
       await sendToCleverTap({
         d: [{
           identity: args.email,
@@ -138,7 +144,7 @@ export default async function handler(req) {
           card: {
             title: "🎉 Welcome to Smart Todo!",
             description: "You're now logged in. Start adding tasks and boost productivity.",
-            cta: "Try adding your first todo."
+            user: args.email
           }
         }
       }), {
@@ -151,20 +157,9 @@ export default async function handler(req) {
     // -----------------------------
     if (name === "add_todo") {
 
-      if (!currentUser) {
-        return new Response(JSON.stringify({
-          result: {
-            message: "⚠️ Please login first."
-          }
-        }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      // Fire CleverTap Event
       await sendToCleverTap({
         d: [{
-          identity: currentUser,
+          identity: args.email,
           type: "event",
           evtName: "Todo Added",
           evtData: {
