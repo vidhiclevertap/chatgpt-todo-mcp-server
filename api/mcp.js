@@ -1,5 +1,5 @@
 export const config = {
-  runtime: "nodejs",
+  runtime: "edge",
 };
 
 const CLEVERTAP_ACCOUNT_ID = "848-6W6-WR7Z";
@@ -31,80 +31,84 @@ export default async function handler(req) {
   // -----------------------------
   if (req.method === "GET") {
 
-    const encoder = new TextEncoder();
+  const encoder = new TextEncoder();
 
-    const stream = new ReadableStream({
-      start(controller) {
+  const stream = new ReadableStream({
+    start(controller) {
 
-        const tools = {
-          tools: [
-            {
-              name: "login_user",
-              description: "Login user with email",
-              parameters: {
-                type: "object",
-                properties: {
-                  email: { type: "string" }
-                },
-                required: ["email"]
-              }
-            },
-            {
-              name: "add_todo",
-              description: "Add a todo item",
-              parameters: {
-                type: "object",
-                properties: {
-                  email: { type: "string" },
-                  text: { type: "string" }
-                },
-                required: ["email", "text"]
-              }
-            },
-            {
-              name: "capture_lead",
-              description: "Capture lead email",
-              parameters: {
-                type: "object",
-                properties: {
-                  email: { type: "string" }
-                },
-                required: ["email"]
-              }
+      const tools = {
+        tools: [
+          {
+            name: "login_user",
+            description: "Login user with email",
+            parameters: {
+              type: "object",
+              properties: {
+                email: { type: "string" }
+              },
+              required: ["email"]
             }
-          ]
-        };
+          },
+          {
+            name: "add_todo",
+            description: "Add a todo item",
+            parameters: {
+              type: "object",
+              properties: {
+                email: { type: "string" },
+                text: { type: "string" }
+              },
+              required: ["email", "text"]
+            }
+          },
+          {
+            name: "capture_lead",
+            description: "Capture lead email",
+            parameters: {
+              type: "object",
+              properties: {
+                email: { type: "string" }
+              },
+              required: ["email"]
+            }
+          }
+        ]
+      };
 
-        // Send tool definitions
+      // 1️⃣ Send tools
+      controller.enqueue(
+        encoder.encode(
+          `event: tools\ndata: ${JSON.stringify(tools)}\n\n`
+        )
+      );
+
+      // 2️⃣ Tell ChatGPT we are ready
+      controller.enqueue(
+        encoder.encode(`event: ready\ndata: {}\n\n`)
+      );
+
+      // 3️⃣ Keep alive
+      const interval = setInterval(() => {
         controller.enqueue(
-          encoder.encode(
-            `event: tools\ndata: ${JSON.stringify(tools)}\n\n`
-          )
+          encoder.encode(`event: ping\ndata: {}\n\n`)
         );
+      }, 15000);
 
-        // Keep connection alive
-        const interval = setInterval(() => {
-          controller.enqueue(
-            encoder.encode(`event: ping\ndata: {}\n\n`)
-          );
-        }, 20000);
+      req.signal.addEventListener("abort", () => {
+        clearInterval(interval);
+        controller.close();
+      });
+    }
+  });
 
-        // Proper abort handling
-        req.signal.addEventListener("abort", () => {
-          clearInterval(interval);
-          controller.close();
-        });
-      }
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
-      }
-    });
-  }
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive"
+    }
+  });
+}
 
   // -----------------------------
   // 2️⃣ TOOL EXECUTION (STATELESS)
