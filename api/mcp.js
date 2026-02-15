@@ -1,5 +1,5 @@
 export const config = {
-  runtime: "edge",
+  runtime: "nodejs",
 };
 
 const CLEVERTAP_ACCOUNT_ID = "848-6W6-WR7Z";
